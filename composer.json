@@ -1,0 +1,12 @@
+{
+    "name": "anton/integration",
+    "require": {
+        "symfony/finder": "~2.0"
+    },
+    "authors": [
+        {
+            "name": "Elfet",
+            "email": "anton@elfet.ru"
+        }
+    ]
+}
