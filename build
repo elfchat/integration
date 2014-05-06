@@ -1,3 +1,65 @@
 #!/usr/bin/env php
 <?php
+require __DIR__ . '/vendor/autoload.php';
 
+use Symfony\Component\Finder\Finder;
+use Symfony\Component\Finder\SplFileInfo;
+
+$finder = new Finder();
+$finder->directories()
+    ->ignoreVCS(true)
+    ->notPath('vendor')
+    ->notPath('zip')
+    ->depth('<= 1')
+    ->in(__DIR__);
+
+/** @var $dir SplFileInfo */
+foreach ($finder as $dir) {
+    echo 'Creating package "' . ($name = $dir->getBasename()) . "\"\n";
+    createZip($name, $dir);
+}
+
+function createZip($name, SplFileInfo $dir, $showAdded = false)
+{
+    static $common = null;
+
+    if ($common === null) {
+        $common = file_get_contents(__DIR__ . '/common.php');
+        $common = str_replace("<?php\n", '', $common);
+    }
+
+    if (!is_writable($zipDir = __DIR__ . '/zip/')) mkdir($zipDir);
+
+    $zipFile = $zipDir . $name . '.zip';
+
+    if (file_exists($zipFile)) {
+        unlink($zipFile);
+    }
+
+    $zip = new ZipArchive();
+    if ($zip->open($zipFile, ZipArchive::CREATE) !== true) {
+        die("Can not open zip archive\n");
+    }
+
+    $finder = new Finder();
+    $finder->files()->in($dir->getPathname());
+
+    /** @var $file SplFileInfo */
+    foreach ($finder as $file) {
+        if ($file->getExtension() === 'php') {
+
+            $content = file_get_contents($file->getRealPath());
+            $content = str_replace('#COMMON', $common, $content);
+            $zip->addFromString($file->getRelativePathname(), $content);
+
+            if ($showAdded) echo "Add PHP file: " . $file->getRelativePathname() . "\n";
+        } else {
+
+            $zip->addFile($file->getRealPath(), $file->getRelativePathname());
+
+            if ($showAdded) echo "Add file: " . $file->getRelativePathname() . "\n";
+        }
+    }
+
+    $zip->close();
+}
